@@ -169,7 +169,15 @@ export async function migrate(db: Database) {
 
   for (let version = current; version < migrations.length; version++) {
     await db.transaction(async () => {
-      await db.exec(migrations[version]);
+      try {
+        await db.exec(migrations[version]);
+      } catch (err: any) {
+        // If column or index already exists, safely skip and bump version
+        const msg = String(err?.message || '').toLowerCase();
+        if (!msg.includes('duplicate column') && !msg.includes('already exists')) {
+          throw err;
+        }
+      }
       await db.exec(`PRAGMA user_version = ${version + 1}`);
     });
   }

@@ -76,6 +76,7 @@ function AppShell() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="cart" options={{ presentation: 'modal' }} />
             <Stack.Screen name="language" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="account" options={{ presentation: 'card' }} />
           </Stack>
         </PrinterProvider>
       </ToastProvider>

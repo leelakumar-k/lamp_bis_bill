@@ -230,7 +230,11 @@ class BluetoothPrinterModule(reactContext: ReactApplicationContext) :
                     addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
                     addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
                 }
-                reactApplicationContext.registerReceiver(discoveryReceiver, filter)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    reactApplicationContext.registerReceiver(discoveryReceiver, filter, Context.RECEIVER_EXPORTED)
+                } else {
+                    reactApplicationContext.registerReceiver(discoveryReceiver, filter)
+                }
                 isReceiverRegistered = true
             }
 
@@ -368,4 +372,14 @@ class BluetoothPrinterModule(reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun removeListeners(count: Int) {}
+
+    override fun onCatalystInstanceDestroy() {
+        super.onCatalystInstanceDestroy()
+        if (isReceiverRegistered) {
+            try {
+                reactApplicationContext.unregisterReceiver(discoveryReceiver)
+                isReceiverRegistered = false
+            } catch (_: Exception) {}
+        }
+    }
 }

@@ -117,7 +117,7 @@ async function recompute(db: Database, orderId: string) {
   const lines = await getLines(db, orderId);
   const totals = computeTotals(lines, order.discount, order.tax_percent);
   await db.run(
-    `UPDATE orders SET subtotal = ?, discount = ?, tax = ?, round_off = ?, total = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE orders SET subtotal = ?, discount = ?, tax = ?, round_off = ?, total = ?, synced = 0, updated_at = ? WHERE id = ?`,
     [totals.subtotal, totals.discount, totals.tax, totals.round_off, totals.total, nowLocal(), orderId],
   );
 }
@@ -199,7 +199,7 @@ export async function payOrder(db: Database, orderId: string, mode: PaymentMode)
 }
 
 export async function cancelOrder(db: Database, orderId: string) {
-  await db.run("UPDATE orders SET status = 'cancelled', updated_at = ? WHERE id = ?", [nowLocal(), orderId]);
+  await db.run("UPDATE orders SET status = 'cancelled', synced = 0, updated_at = ? WHERE id = ?", [nowLocal(), orderId]);
 }
 
 /** Moves an order to another table, taking the next free sharing label there. */

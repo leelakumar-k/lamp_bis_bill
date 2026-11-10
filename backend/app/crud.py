@@ -31,16 +31,11 @@ def check_customer_duplicate(db: Session, business_name: str, phone: str, locati
     norm_phone = normalize_phone(phone)
     norm_loc = normalize_text(location)
 
-    # Search for match on normalized name, phone digits, and normalized location
-    customers = db.query(Customer).all()
-    for c in customers:
-        if (
-            normalize_text(c.business_name) == norm_name and
-            normalize_phone(c.phone) == norm_phone and
-            normalize_text(c.location) == norm_loc
-        ):
-            return c
-    return None
+    return db.query(Customer).filter(
+        func.lower(func.trim(Customer.business_name)) == norm_name,
+        func.regexp_replace(Customer.phone, r"[^0-9]", "", "g") == norm_phone,
+        func.lower(func.trim(Customer.location)) == norm_loc
+    ).first()
 
 def register_customer(db: Session, req: CustomerRegisterRequest) -> Customer:
     # 1. Duplicate check on (name, phone, location)
@@ -346,6 +341,20 @@ def sync_orders_batch(db: Session, customer_id: str, orders: List[OrderSyncItem]
                 existing.paid_at = o.paid_at
                 existing.synced_at = datetime.now(timezone.utc)
                 order_rec = existing
+
+                # Replace lines if provided
+                if o.lines:
+                    db.query(OrderLine).filter(OrderLine.order_id == existing.id).delete()
+                    for l in o.lines:
+                        db.add(OrderLine(
+                            order_id=order_rec.id,
+                            customer_id=customer_id,
+                            item_local_id=l.item_local_id,
+                            name=l.name,
+                            price=l.price,
+                            qty=l.qty,
+                            note=l.note
+                        ))
             else:
                 order_rec = Order(
                     customer_id=customer_id,
