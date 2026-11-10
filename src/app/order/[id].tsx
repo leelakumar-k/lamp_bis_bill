@@ -23,6 +23,7 @@ import { formatMoney } from '@/lib/money';
 import { goBack } from '@/lib/navigation';
 import { orderLabel } from '@/lib/order-label';
 import { buildOrderReceipt } from '@/lib/receipt';
+import { triggerBackgroundSync } from '@/lib/sync-engine';
 import { useDb, useDbQuery, useRevalidateAll, useSettings } from '@/providers/database';
 import { radius, useTheme } from '@/theme';
 
@@ -61,6 +62,7 @@ export default function OrderDetailScreen() {
     successFeedback();
     await revalidateAll();
     toast({ message: t('ord.paidToast') });
+    triggerBackgroundSync(db, settings).catch(() => {});
   };
 
   const handleGenerateBill = async () => {

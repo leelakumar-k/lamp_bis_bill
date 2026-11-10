@@ -27,6 +27,14 @@ expo-env.d.ts
 android-sdk/
 *.apk
 *.aab
+
+# Python / Backend
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
 .kotlin/
 *.jks
 *.p8

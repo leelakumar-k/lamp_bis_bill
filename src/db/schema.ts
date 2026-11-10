@@ -156,6 +156,11 @@ const migrations: string[] = [
   `
   CREATE INDEX IF NOT EXISTS idx_items_name_nocase ON items(name COLLATE NOCASE);
   `,
+  // Migration 6: Add synced column to orders for cloud sync
+  `
+  ALTER TABLE orders ADD COLUMN synced INTEGER NOT NULL DEFAULT 0;
+  CREATE INDEX IF NOT EXISTS idx_orders_synced ON orders(synced, status);
+  `,
 ];
 
 export async function migrate(db: Database) {

@@ -4,6 +4,7 @@ export type ThemePreference = 'system' | 'light' | 'dark';
 
 export type PaperWidth = '58' | '80';
 export type ReceiptLanguage = 'en' | 'app';
+export type SubscriptionPlan = 'super' | 'gold' | 'premium';
 
 // Stored as strings in app_meta; numeric values are parsed where used.
 export type Settings = {
@@ -22,6 +23,15 @@ export type Settings = {
   receiptFooter: string;
   bluetoothPrinterAddress: string;
   bluetoothPrinterName: string;
+
+  // Cloud Account & Plan Settings
+  customerId: string;
+  plan: SubscriptionPlan;
+  ownerEmail: string;
+  licenseCode: string;
+  licenseExpiresAt: string;
+  serverUrl: string;
+  lastSyncedAt: string;
 };
 
 export const defaultSettings: Settings = {
@@ -39,6 +49,15 @@ export const defaultSettings: Settings = {
   receiptFooter: 'Thank you! Visit again',
   bluetoothPrinterAddress: '',
   bluetoothPrinterName: '',
+
+  // Cloud Account & Plan Defaults
+  customerId: '',
+  plan: 'super',
+  ownerEmail: '',
+  licenseCode: '',
+  licenseExpiresAt: '',
+  serverUrl: 'http://10.0.2.2:8005',
+  lastSyncedAt: '',
 };
 
 export const numberSetting = (value: string, fallback: number) => {

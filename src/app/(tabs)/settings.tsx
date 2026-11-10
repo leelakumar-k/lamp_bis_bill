@@ -159,6 +159,12 @@ export default function SettingsScreen() {
             <SectionTitle>{t('set.general')}</SectionTitle>
             <Card>
               <ListRow
+                icon="shield-checkmark-outline"
+                title="Account & Subscription Plan"
+                subtitle={`${(settings.plan || 'super').toUpperCase()} · ${settings.customerId || 'Register'}`}
+                onPress={() => router.push('/account')}
+              />
+              <ListRow
                 icon="restaurant-outline"
                 title={t('set.menu')}
                 subtitle={t('menu.title')}

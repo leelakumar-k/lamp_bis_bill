@@ -6,6 +6,7 @@ import { billOrder, createOrder, updateOrderLines } from '@/db/orders';
 import { useI18n } from '@/i18n';
 import { notify } from '@/lib/confirm';
 import { successFeedback } from '@/lib/haptics';
+import { triggerBackgroundSync } from '@/lib/sync-engine';
 import { useCart } from '@/providers/cart';
 import { useDb, useRevalidateAll, useSettings } from '@/providers/database';
 
@@ -48,6 +49,7 @@ export function useSaveOrder() {
       // Takeaway counters usually ring up the next takeaway; tables change every order.
       cart.reset(!draft.orderId && draft.type === 'takeaway');
       await revalidateAll();
+      triggerBackgroundSync(db, settings).catch(() => {});
       return id;
     } catch (error) {
       notify(t('set.error'), error instanceof Error ? error.message : undefined);
