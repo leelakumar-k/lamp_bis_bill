@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { LicenseBanner } from '@/components/license-banner';
 import { CartPanel } from '@/components/pos/cart-panel';
 import { MenuGrid } from '@/components/pos/menu-grid';
 import { OrderTarget } from '@/components/pos/order-target';
@@ -27,18 +28,21 @@ export default function MenuScreen() {
   const { data: items = [], isLoading } = useDbQuery('items', listItems);
 
   const header = (
-    <ScreenHeader
-      eyebrow={settings.businessName || 'Muster'}
-      title={t('tab.menu')}
-      right={
-        <IconButton
-          icon="create-outline"
-          label={t('pos.manageMenu')}
-          variant="soft"
-          onPress={() => router.push('/menu')}
-        />
-      }
-    />
+    <>
+      <ScreenHeader
+        eyebrow={settings.businessName || 'Muster'}
+        title={t('tab.menu')}
+        right={
+          <IconButton
+            icon="create-outline"
+            label={t('pos.manageMenu')}
+            variant="soft"
+            onPress={() => router.push('/menu')}
+          />
+        }
+      />
+      <LicenseBanner />
+    </>
   );
 
   if (!isLoading && items.length === 0) {

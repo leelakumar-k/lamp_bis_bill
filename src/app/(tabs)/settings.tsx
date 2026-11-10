@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
 import { FormScrollView } from '@/components/keyboard';
+import { LicenseBanner } from '@/components/license-banner';
 import { useToast } from '@/components/toast';
 import { Card, Chip, ChipRow, ListRow, SectionTitle, Segmented } from '@/components/ui/primitives';
 import { Content, Screen, ScreenHeader } from '@/components/ui/screen';
@@ -152,6 +153,7 @@ export default function SettingsScreen() {
   return (
     <Screen edges={['top', 'left', 'right']}>
       <ScreenHeader title={t('tab.settings')} />
+      <LicenseBanner />
       <FormScrollView toolbar={false} contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: 96 }}>
         <Content style={styles.body}>
           {/* GENERAL */}

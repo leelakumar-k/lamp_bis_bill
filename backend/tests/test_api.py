@@ -156,3 +156,52 @@ def test_premium_order_sync():
     stats = stats_res.json()
     assert stats["total_orders"] == 1
     assert stats["net_sales"] == 52500
+
+def test_multi_device_order_changes():
+    import uuid
+    uniq = str(uuid.uuid4())[:6]
+    c_res = client.post("/api/customers/register", json={
+        "business_name": f"MultiCounterCafe {uniq}",
+        "phone": f"96655{uniq[:5]}",
+        "location": f"Food Court {uniq}",
+        "plan": "premium"
+    })
+    cust_id = c_res.json()["customer_id"]
+
+    # Post an order from Counter 1
+    ord_res = client.post("/api/sync/orders/batch", json={
+        "customer_id": cust_id,
+        "orders": [
+            {
+                "local_order_id": f"ord_cnt1_{uniq}",
+                "bill_no": 201,
+                "token": 12,
+                "type": "dine_in",
+                "status": "open",
+                "business_date": "2026-11-10",
+                "table_name": "T-10",
+                "subtotal": 35000,
+                "total": 35000,
+                "lines": [
+                    {"item_local_id": "i_coffee", "name": "Cappuccino", "price": 35000, "qty": 1}
+                ]
+            }
+        ]
+    })
+    assert ord_res.status_code == 200
+
+    # Counter 2 fetches changes
+    changes_res = client.get(f"/api/sync/orders/changes?customer_id={cust_id}")
+    assert changes_res.status_code == 200
+    changes = changes_res.json()
+    assert changes["changes_count"] == 1
+    assert changes["orders"][0]["local_order_id"] == f"ord_cnt1_{uniq}"
+    assert changes["orders"][0]["table_name"] == "T-10"
+
+    # Counter 2 queries live tables
+    tables_res = client.get(f"/api/sync/tables/live?customer_id={cust_id}")
+    assert tables_res.status_code == 200
+    tables = tables_res.json()
+    assert len(tables["active_tables"]) == 1
+    assert tables["active_tables"][0]["table_name"] == "T-10"
+

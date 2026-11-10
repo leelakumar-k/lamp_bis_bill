@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { LicenseBanner } from '@/components/license-banner';
 import { TableChairLayout } from '@/components/pos/table-chair-layout';
 import { Button, IconButton } from '@/components/ui/button';
 import { Card, Chip, ChipRow, EmptyState, Segmented } from '@/components/ui/primitives';
@@ -625,6 +626,7 @@ export default function OrdersScreen() {
   return (
     <Screen edges={['top', 'left', 'right']}>
       {header}
+      <LicenseBanner />
       {segmentedTabs}
       {mode === 'running'
         ? runningContent()

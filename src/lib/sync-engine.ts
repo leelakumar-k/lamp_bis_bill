@@ -335,3 +335,138 @@ export async function triggerBackgroundSync(db: Database, settings: Settings) {
     await syncPendingOrdersToServer(db, settings);
   }
 }
+
+// ----------------- Multi-Counter Change Pull (Premium) -----------------
+
+/**
+ * Pulls changes created or updated by other counters (Premium plan).
+ * Synchronizes table occupancy and completed orders across devices.
+ */
+export async function pullRemoteOrderChanges(
+  db: Database,
+  settings: Settings,
+): Promise<{ success: boolean; pulledCount: number }> {
+  if (settings.plan !== 'premium' || !settings.customerId?.trim()) {
+    return { success: true, pulledCount: 0 };
+  }
+
+  const cleanUrl = settings.serverUrl.replace(/\/+$/, '');
+  try {
+    const lastPull = settings.lastSyncedAt || '';
+    const query = lastPull
+      ? `?customer_id=${encodeURIComponent(settings.customerId.trim())}&since=${encodeURIComponent(lastPull)}`
+      : `?customer_id=${encodeURIComponent(settings.customerId.trim())}`;
+
+    const res = await fetch(`${cleanUrl}/api/sync/orders/changes${query}`);
+    if (!res.ok) return { success: false, pulledCount: 0 };
+
+    const data = await res.json();
+    const orders = data.orders || [];
+    if (orders.length === 0) return { success: true, pulledCount: 0 };
+
+    await db.transaction(async () => {
+      for (const o of orders) {
+        // If order doesn't exist locally, insert it marked as synced
+        const existing = await db.first<{ id: string }>('SELECT id FROM orders WHERE id = ?', [o.local_order_id]);
+        if (!existing) {
+          const shift = await getOpenShift(db);
+          await db.run(
+            `INSERT OR IGNORE INTO orders (
+               id, shift_id, business_date, type, table_id, party, token, bill_no,
+               status, customer_name, note, tax_percent, subtotal, discount, tax,
+               round_off, total, payment_mode, synced, created_at, updated_at, billed_at, paid_at
+             ) VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL, 0, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+            [
+              o.local_order_id,
+              shift?.id || 'default_shift',
+              o.business_date,
+              o.type || 'takeaway',
+              o.token,
+              o.bill_no,
+              o.status || 'paid',
+              o.customer_name,
+              o.subtotal,
+              o.discount || 0,
+              o.tax || 0,
+              o.round_off || 0,
+              o.total,
+              o.payment_mode,
+              o.created_at || new Date().toISOString(),
+              o.synced_at || new Date().toISOString(),
+              o.billed_at,
+              o.paid_at,
+            ],
+          );
+
+          if (o.lines && o.lines.length > 0) {
+            for (const l of o.lines) {
+              await db.run(
+                `INSERT OR IGNORE INTO order_items (id, order_id, item_id, name, price, qty, note, position)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+                [`item_${o.local_order_id}_${Math.random().toString(36).slice(2, 7)}`, o.local_order_id, l.item_local_id, l.name, l.price, l.qty, l.note],
+              );
+            }
+          }
+        }
+      }
+    });
+
+    return { success: true, pulledCount: orders.length };
+  } catch {
+    return { success: false, pulledCount: 0 };
+  }
+}
+
+// ----------------- Auto-Retry Exponential Backoff Sync Daemon -----------------
+
+const BACKOFF_DELAYS = [5000, 15000, 30000, 60000, 120000, 300000]; // 5s, 15s, 30s, 1m, 2m, max 5m
+let consecutiveFailures = 0;
+let nextRetryTimestamp = 0;
+
+/**
+ * Automatically retries sync on an exponential backoff schedule.
+ * If offline, increases backoff delay up to 5 minutes without freezing UI.
+ * When back online, immediately syncs and resets backoff to 0.
+ */
+export async function runAutoSyncCycle(
+  db: Database,
+  settings: Settings,
+  onSyncDone?: () => void,
+) {
+  if (settings.plan === 'super' || !settings.customerId?.trim()) return;
+
+  const now = Date.now();
+  if (now < nextRetryTimestamp) {
+    return; // Exponential backoff in effect
+  }
+
+  const online = await checkServerConnection(settings.serverUrl);
+  if (!online) {
+    consecutiveFailures++;
+    const delayIndex = Math.min(consecutiveFailures - 1, BACKOFF_DELAYS.length - 1);
+    nextRetryTimestamp = now + BACKOFF_DELAYS[delayIndex];
+    return;
+  }
+
+  // Back online! Reset backoff
+  consecutiveFailures = 0;
+  nextRetryTimestamp = 0;
+
+  try {
+    if (settings.plan === 'gold') {
+      await syncDailySummaryToServer(db, settings);
+    } else if (settings.plan === 'premium') {
+      await syncDailySummaryToServer(db, settings);
+      await syncMenuToServer(db, settings);
+      const pushRes = await syncPendingOrdersToServer(db, settings);
+      const pullRes = await pullRemoteOrderChanges(db, settings);
+      if ((pushRes.syncedCount && pushRes.syncedCount > 0) || pullRes.pulledCount > 0) {
+        onSyncDone?.();
+      }
+    }
+  } catch {
+    consecutiveFailures++;
+    const delayIndex = Math.min(consecutiveFailures - 1, BACKOFF_DELAYS.length - 1);
+    nextRetryTimestamp = now + BACKOFF_DELAYS[delayIndex];
+  }
+}

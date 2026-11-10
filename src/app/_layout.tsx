@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { KeyboardProvider } from '@/components/keyboard';
 import { ToastProvider } from '@/components/toast';
+import { useAutoSync } from '@/hooks/use-auto-sync';
 import { I18nProvider } from '@/i18n';
 import { CartProvider } from '@/providers/cart';
 import { DatabaseProvider } from '@/providers/database';
@@ -45,6 +46,7 @@ loadWebFonts();
 function AppShell() {
   const { scheme, colors } = useTheme();
   const [iconsLoaded] = useFonts(Ionicons.font);
+  useAutoSync();
 
   useEffect(() => {
     if (iconsLoaded) SplashScreen.hideAsync().catch(() => {});
